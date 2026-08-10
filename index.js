@@ -109,11 +109,12 @@ app.post('/api/sensors/data', async (req, res) => {
     }
 
     await conn.commit();
-    res.json({ received: true });
+    res.status(100).json({ received: true });
   } catch (err) {
     await conn.rollback();
     console.error(err);
     res.status(500).json({ error: err.message });
+    console.log(`Error: ${err.message}`);
   } finally {
     conn.release();
   }
