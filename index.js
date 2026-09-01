@@ -148,13 +148,23 @@ app.get('/api/sensors/:code/history', async (req, res) => {
 app.get('/api/sensors/:code/range', async (req, res) => {
   const { code } = req.params;
   const { from, to } = req.query;
-  const count = Math.min(parseInt(req.query.count) || 100, 5000);
+  const count = Math.min(Math.max(parseInt(req.query.count) || 100, 1), 5000);
 
-  const fromUnix = parseInt(from);
-  const toUnix = parseInt(to);
+  // Валідація обов'язкових параметрів
+  if (!from || !to) {
+    return res.status(400).json({ error: 'Параметри from та to обов’язкові' });
+  }
 
-  if (!fromUnix || !toUnix) {
-    return res.status(400).json({ error: 'Параметри from та to обов’язкові (unix timestamp)' });
+  // Валідація формату дат
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+    return res.status(400).json({ error: 'Некоректний формат дати. Очікується YYYY-MM-DD HH:MM:SS' });
+  }
+
+  if (fromDate > toDate) {
+    return res.status(400).json({ error: 'from не може бути пізніше за to' });
   }
 
   try {
@@ -174,14 +184,31 @@ app.get('/api/sensors/:code/range', async (req, res) => {
       WHERE rn % GREATEST(FLOOR(total / ?), 1) = 0
       ORDER BY timestamp ASC
       LIMIT ?`,
-      [code, fromUnix, toUnix, count, count]
+      [code, from, to, count, count]
     );
 
-    res.json(rows);
+    if (rows.length === 0) {
+      return res.status(200).json({
+        data: [],
+        message: 'Дані за вказаний період не знайдено'
+      });
+    }
+
+    res.json({
+      data: rows,
+      meta: {
+        sensor_code: code,
+        from,
+        to,
+        requested_count: count,
+        returned_count: rows.length
+      }
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Помилка запиту /range:', err);
     res.status(500).json({ error: err.message });
   }
+});
 });
 
 app.post('/api/pumps/:code/toggle', (req, res) => {
