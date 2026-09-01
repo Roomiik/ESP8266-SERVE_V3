@@ -209,7 +209,6 @@ app.get('/api/sensors/:code/range', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-});
 
 app.post('/api/pumps/:code/toggle', (req, res) => {
   const { code } = req.params;
