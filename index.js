@@ -145,6 +145,45 @@ app.get('/api/sensors/:code/history', async (req, res) => {
   }
 });
 
+app.get('/api/sensors/:code/range', async (req, res) => {
+  const { code } = req.params;
+  const { from, to } = req.query;
+  const count = Math.min(parseInt(req.query.count) || 100, 5000);
+
+  const fromUnix = parseInt(from);
+  const toUnix = parseInt(to);
+
+  if (!fromUnix || !toUnix) {
+    return res.status(400).json({ error: 'Параметри from та to обов’язкові (unix timestamp)' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `WITH ranked AS (
+        SELECT
+          value,
+          timestamp,
+          ROW_NUMBER() OVER (ORDER BY timestamp ASC) AS rn,
+          COUNT(*) OVER () AS total
+        FROM sensor_info
+        WHERE sensor_code = ?
+          AND timestamp BETWEEN ? AND ?
+      )
+      SELECT value, timestamp
+      FROM ranked
+      WHERE rn % GREATEST(FLOOR(total / ?), 1) = 0
+      ORDER BY timestamp ASC
+      LIMIT ?`,
+      [code, fromUnix, toUnix, count, count]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/pumps/:code/toggle', (req, res) => {
   const { code } = req.params;
   try {
