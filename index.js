@@ -145,6 +145,16 @@ app.get('/api/sensors/:code/history', async (req, res) => {
   }
 });
 
+app.get("/api/settings", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT * FROM setting`);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/sensors/:code/range', async (req, res) => {
   const { code } = req.params;
   const { from, to } = req.query;
