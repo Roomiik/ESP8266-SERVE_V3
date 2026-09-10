@@ -52,7 +52,8 @@ app.get('/api/devices', async (req, res) => {
 
 app.post('/api/devices/update', async (req, res) => {
   const { id, type, name, code, label } = req.body;
-  console.log(req.body);
+  console.log(`${id} | ${type} | ${name} | ${code}`);
+  console.log(JSON.parse(req.body));
   if (!type || !code || !name) {
     return res.status(400).json({ error: 'code and type are required' });
   }
