@@ -50,6 +50,25 @@ app.get('/api/devices', async (req, res) => {
   }
 });
 
+app.post('/api/devices/update', async (req, res) => {
+  const { id, type, name, code, label } = req.body;
+  if (!type || !code || !name) {
+    return res.status(400).json({ error: 'code and type are required' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE sensors SET name = ${name}, code = ${code}, meta = ${label} WHERE id = ${id}`;
+    res.json({ id: result.insertId });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Device with this code already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/sensors/latest', async (req, res) => {
   try {
     const [rows] = await pool.query(`
