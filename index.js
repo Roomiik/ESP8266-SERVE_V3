@@ -52,6 +52,7 @@ app.get('/api/devices', async (req, res) => {
 
 app.post('/api/devices/update', async (req, res) => {
   const { id, type, name, code, label } = req.body;
+  console.log(req.body);
   if (!type || !code || !name) {
     return res.status(400).json({ error: 'code and type are required' });
   }
@@ -62,9 +63,6 @@ app.post('/api/devices/update', async (req, res) => {
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Device with this code already exists' });
-    }
-    else {
-      res.status(400).json({error: err.message}
     }
     console.error(err);
     res.status(500).json({ error: err.message });
