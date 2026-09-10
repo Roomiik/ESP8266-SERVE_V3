@@ -35,7 +35,7 @@ app.post('/api/devices', async (req, res) => {
 app.get('/api/devices', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT code, name, type, subtype, unit, status, meta, created_at FROM sensors`
+      `SELECT id, code, name, type, subtype, unit, status, meta, created_at FROM sensors`
     );
 
     const devices = rows.map(d => ({
