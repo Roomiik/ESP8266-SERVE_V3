@@ -57,8 +57,7 @@ app.post('/api/devices/update', async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query(
-      `UPDATE sensors SET name = ${name}, code = ${code}, meta = ${label} WHERE id = ${id}`;
+    const [result] = await pool.query(`UPDATE sensors SET name = ${name}, code = ${code}, meta = ${label} WHERE id = ${id}`);
     res.json({ id: result.insertId });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
