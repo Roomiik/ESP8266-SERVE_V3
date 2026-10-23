@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const MAX_RECORDS_PER_SENSOR = process.env.MAX_RECORDS_PER_SENSOR ? parseInt(process.env.MAX_RECORDS_PER_SENSOR) : 1000;
+const MAX_RECORDS_PER_SENSOR = process.env.MAX_RECORDS_PER_SENSOR ? parseInt(process.env.MAX_RECORDS_PER_SENSOR) : 10000;
 
 app.post('/api/devices', async (req, res) => {
   const { code, name, type, subtype, unit, status, meta } = req.body;
@@ -51,22 +51,38 @@ app.get('/api/devices', async (req, res) => {
 });
 
 app.post('/api/devices/update', async (req, res) => {
-  const { id, type, name, code, label } = req.body;
-  console.log(`${id} | ${type} | ${name} | ${code}`);
-  console.log(JSON.parse(req.body));
-  if (!type || !code || !name) {
-    return res.status(400).json({ error: 'code and type are required' });
-  }
-
+  const data = req.body;
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.query(`UPDATE sensors SET name = ${name}, code = ${code}, meta = ${label} WHERE id = ${id}`);
-    res.json({ id: result.insertId });
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: 'Device with this code already exists' });
+    await conn.beginTransaction();
+
+    for (const key of Object.keys(data.sensors)) {
+      const { id, type, name, code, label, meta } =  data.sensors[key]
+      if (!code || !type || name === undefined) continue;
+
+      const [rows] = await conn.query(
+        `SELECT code FROM sensors
+         WHERE id = ?
+         ORDER BY id DESC
+         LIMIT 1 `,
+        [id]
+      );
+      if (rows.length > 0) {
+        await conn.query(
+          `UPDATE sensors SET code = ?, meta = ?, name = ? WHERE id = ?`,
+          [code, meta, name, id]);
+      }
     }
+
+    await conn.commit();
+    res.json({ received: true });
+  } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ error: err.message });
+    console.log(`Error: ${err.message}`);
+  } finally {
+    conn.release();
   }
 });
 
@@ -179,6 +195,7 @@ app.get('/api/sensors/:code/range', async (req, res) => {
   const { code } = req.params;
   const { from, to } = req.query;
   const count = Math.min(Math.max(parseInt(req.query.count) || 100, 1), 5000);
+  console.log(from, to);
 
   // Валідація обов'язкових параметрів
   if (!from || !to) {
@@ -234,6 +251,7 @@ app.get('/api/sensors/:code/range', async (req, res) => {
         returned_count: rows.length
       }
     });
+    console.log(rows.length);
   } catch (err) {
     console.error('Помилка запиту /range:', err);
     res.status(500).json({ error: err.message });
