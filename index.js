@@ -123,7 +123,7 @@ app.post('/api/sensors/data', async (req, res) => {
         `INSERT INTO sensor_info (sensor_code, value) VALUES (?, ?)`,
         [code, value]
       );
-
+      console.log('MAX_RECORDS_PER_SENSOR =', MAX_RECORDS_PER_SENSOR, typeof MAX_RECORDS_PER_SENSOR);
       const [rows] = await conn.query(
         `SELECT id FROM sensor_info
          WHERE sensor_code = ?
